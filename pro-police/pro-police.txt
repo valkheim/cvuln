@@ -1,0 +1,50 @@
+Lets disassemble simple program WITH and WITHOUT canaries.
+
+WITH
+(gdb) disass foo
+Dump of assembler code for function foo:
+   0x0804849b <+0>:	push   %ebp
+   0x0804849c <+1>:	mov    %esp,%ebp
+   0x0804849e <+3>:	sub    $0x38,%esp
+   0x080484a1 <+6>:	mov    %gs:0x14,%eax                        ; move canary into eax
+   0x080484a7 <+12>:	mov    %eax,-0xc(%ebp)                      ; place canary on stack
+   0x080484aa <+15>:	xor    %eax,%eax                            ; zero out eax
+   0x080484ac <+17>:	sub    $0x8,%esp
+   0x080484af <+20>:	lea    -0x2c(%ebp),%eax
+   0x080484b2 <+23>:	push   %eax
+   0x080484b3 <+24>:	push   $0x8048584
+   0x080484b8 <+29>:	call   0x8048370 <__isoc99_scanf@plt>
+   0x080484bd <+34>:	add    $0x10,%esp
+   0x080484c0 <+37>:	nop
+   0x080484c1 <+38>:	mov    -0xc(%ebp),%eax                      ; retrieve canary value
+   0x080484c4 <+41>:	xor    %gs:0x14,%eax                        ; compare it to default canary value
+   0x080484cb <+48>:	je     0x80484d2 <foo+55>                   ; if it didnt differed
+   0x080484cd <+50>:	call   0x8048350 <__stack_chk_fail@plt>
+   0x080484d2 <+55>:	leave  
+   0x080484d3 <+56>:	ret    
+End of assembler dump.
+
+WITHOUT
+(gdb) disass foo
+Dump of assembler code for function foo:
+   0x0804843b <+0>:	push   %ebp
+   0x0804843c <+1>:	mov    %esp,%ebp
+   0x0804843e <+3>:	sub    $0x28,%esp
+   0x08048441 <+6>:	sub    $0x8,%esp
+   0x08048444 <+9>:	lea    -0x28(%ebp),%eax
+   0x08048447 <+12>:	push   %eax
+   0x08048448 <+13>:	push   $0x8048504
+   0x0804844d <+18>:	call   0x8048310 <__isoc99_scanf@plt>
+   0x08048452 <+23>:	add    $0x10,%esp
+   0x08048455 <+26>:	nop
+   0x08048456 <+27>:	leave  
+   0x08048457 <+28>:	ret
+
+
+gs is a segment register
+mov    %gs:0x14,%eax
+xor    %gs:0x14,%eax
+is used to check the canaries is not altered
+canary is located at gs+0x14
+
+https://xorl.wordpress.com/2010/10/14/linux-glibc-stack-canary-values/
